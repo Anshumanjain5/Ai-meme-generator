@@ -1,7 +1,6 @@
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
-import base64
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
