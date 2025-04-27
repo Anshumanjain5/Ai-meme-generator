@@ -24,14 +24,14 @@ def meme_generator(image_base64,n_meme:int,n_lines:int):
         messages=[
             {
                 "role": "system",
-                "content": "You are a meme line generator, you will generate some relatable and funny lines for the meme templates.",
+                "content": "You are a meme line generator. Your task is to create relatable and funny lines for the given meme templates.",
             },
             {
                 "role": "user",
                 "content": [
                     {
                         "type": "text",
-                        "text": f"Generate {n_meme} number of funny and relatable lines for the meme template, you have to write {n_lines} these much lines per meme. The image is provided.",
+                        "text": f"Create {n_meme} funny and relatable memes based on the provided meme template. Each meme should have {n_lines} lines of text",
                     },
                     {
                         "type": "image_url",
@@ -47,5 +47,6 @@ def meme_generator(image_base64,n_meme:int,n_lines:int):
         model=model
     )
 
-    print(response.choices[0].message.content)
+    # print(response.choices[0].message.content)
+    return response.choices[0].message.content
 
