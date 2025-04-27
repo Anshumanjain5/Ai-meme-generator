@@ -2,6 +2,8 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 import base64
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Load environment variables from .env file
 load_dotenv()
@@ -10,41 +12,40 @@ token = os.environ["GITHUB_TOKEN"]
 endpoint = "https://models.github.ai/inference"
 model = "openai/gpt-4.1"
 
-image_path = r"C:\Users\anshuman\Downloads\ChatGPT Image Apr 18, 2025, 08_57_13 PM.png"  # Change to your local image
-with open(image_path, "rb") as image_file:
-    image_base64 = base64.b64encode(image_file.read()).decode("utf-8")
+
 
 client = OpenAI(
     base_url=endpoint,
     api_key=token,
 )
 
-response = client.chat.completions.create(
-    messages=[
-        {
-            "role": "system",
-            "content": "",
-        },
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "What is this image about?",
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/png;base64,{image_base64}",
+def meme_generator(image_base64,n_meme:int,n_lines:int):
+    response = client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a meme line generator, you will generate some relatable and funny lines for the meme templates.",
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Generate {n_meme} number of funny and relatable lines for the meme template, you have to write {n_lines} these much lines per meme. The image is provided.",
                     },
-                }
-            ],
-        }
-    ],
-    temperature=1,
-    top_p=1,
-    model=model
-)
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{image_base64}",
+                        },
+                    }
+                ],
+            }
+        ],
+        temperature=0.7,
+        top_p=1,
+        model=model
+    )
 
-print(response.choices[0].message.content)
+    print(response.choices[0].message.content)
 
