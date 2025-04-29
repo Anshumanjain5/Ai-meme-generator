@@ -29,6 +29,7 @@ def str_to_json(raw_text:str, image_base64):
             ]
         }
     ]
+    messages = messages
 
     completion = client.chat.completions.create(
         model="google/gemma-3-27b-it", 
@@ -38,4 +39,23 @@ def str_to_json(raw_text:str, image_base64):
         top_p=0.7,
     )
 
-    return completion.choices[0].message.content
+    response = completion.choices[0].message.content
+    messages.append({
+        "role": "assistant",
+        "content": response
+    },
+    {
+        "role": "user",
+        "content": "Remove the text that is already existed in the image.",
+    })
+
+    completion = client.chat.completions.create(
+        model="google/gemma-3-27b-it", 
+        messages=messages, 
+        temperature=0.5,
+        max_tokens=2048,
+        top_p=0.7,
+    )
+
+
+    return completion.choices[0].message.content 
