@@ -1,1 +1,1 @@
-
+Hey future anshuman, I fix the huggingface problem by directly sending the request to the api endpoint and you have to make it function as a function in which you have to only enter system prompt and prompt. The file is .py and please try to finish it. 
