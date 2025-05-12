@@ -5,6 +5,13 @@ import type React from "react"
 import { useEffect, useRef, useState } from "react"
 import * as fabric from "fabric"
 import { Button } from "@/components/ui/button"
+
+// Extend fabric.Object to include a 'data' property
+declare module "fabric" {
+  interface Object {
+    data?: { id?: string; type?: string }
+  }
+}
 import { Card } from "@/components/ui/card"
 import { Upload, Send } from "lucide-react"
 import { EditPanel } from "./edit-panel"
@@ -119,7 +126,7 @@ export function ImageAnnotator() {
 
     setRectangles((prevRectangles) => {
       return prevRectangles.map((rect) => {
-        if (rect.id === fabricObject.data.id) {
+        if (rect.id === fabricObject.data?.id) {
           return {
             ...rect,
             left: fabricObject.left || 0,
@@ -232,9 +239,9 @@ export function ImageAnnotator() {
       angle: rect.angle,
       hasControls: true,
       hasBorders: true,
-      lockUniScaling: false,
-      data: { id: rect.id, type: "annotation" },
-    })
+      lockScalingFlip: false,
+      data: { id: rect.id, type: "rectangle" },
+    } as fabric.Group)
 
     canvasRef.current.add(group)
     canvasRef.current.setActiveObject(group)
@@ -329,6 +336,7 @@ export function ImageAnnotator() {
     const dataUrl = canvasRef.current.toDataURL({
       format: "png",
       quality: 1,
+      multiplier: 1,
     })
 
     // Restore selection if there was one
@@ -426,7 +434,7 @@ export function ImageAnnotator() {
       const response = await fetch("http://localhost:8000", {
         method: "POST",
         body: formData,
-        signal: AbortSignal.timeout(3000), // 3 second timeout
+        // signal: AbortSignal.timeout(3000), // 3 second timeout
       })
 
       if (response.ok) {
