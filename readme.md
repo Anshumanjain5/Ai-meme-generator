@@ -1,1 +1,1 @@
-Hey future Anshuman! I’ve done the task of the JSON converter. Now you have to create a function in the `utils` folder to place text in a specific rectangle area's coordinates. Then, in the components section, you need to create a function that takes the JSON list and places each specific text in its designated area in the correct order.
+Hey Anshuman I am your past and I have done the task of placement of text in the rectangle, now its your chance to write the code for server and connect it to the frontend, use the bolt or v0 to built the frontend. Its is the last step.

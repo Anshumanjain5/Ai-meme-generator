@@ -46,3 +46,20 @@ def put_text_in_rectangle(
     cv2.putText(image, text, (text_x, text_y), font, font_scale, text_color, thickness, cv2.LINE_AA)
 
     return font_scale
+
+if __name__ == "__main__":
+    # Example usage
+    image = cv2.imread("example.jpg")
+    put_text_in_rectangle(
+        image,
+        "Hello, World!",
+        (50, 50),
+        (300, 150),
+        text_color=(255, 0, 0),
+        stroke_color=(0, 255, 0),
+        thickness=2,
+        stroke_thickness=4,
+    )
+    cv2.imshow("Image with Text", image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
