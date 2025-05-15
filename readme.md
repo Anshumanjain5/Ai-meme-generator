@@ -1,1 +1,1 @@
-Hey Anshuman I am your past and I have done the task of placement of text in the rectangle, now its your chance to write the code for server and connect it to the frontend, use the bolt or v0 to built the frontend. Its is the last step.
+Hey future anshuman complete this, I completed this server and now we need to just add some functions and logics to actually make it work.

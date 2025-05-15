@@ -5,17 +5,11 @@ import type React from "react"
 import { useEffect, useRef, useState } from "react"
 import * as fabric from "fabric"
 import { Button } from "@/components/ui/button"
-
-// Extend fabric.Object to include a 'data' property
-declare module "fabric" {
-  interface Object {
-    data?: { id?: string; type?: string }
-  }
-}
 import { Card } from "@/components/ui/card"
 import { Upload, Send } from "lucide-react"
 import { EditPanel } from "./edit-panel"
 import { cn } from "@/lib/utils"
+import { useRouter } from "next/navigation"
 import {
   Dialog,
   DialogContent,
@@ -25,6 +19,15 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+
+// Define a custom type for our Fabric objects with data property
+interface CustomFabricObject extends fabric.Object {
+  data?: {
+    id: string
+    type: string
+  }
+}
 
 // Define the type for our rectangle objects
 type AnnotationRectangle = {
@@ -38,6 +41,7 @@ type AnnotationRectangle = {
 }
 
 export function ImageAnnotator() {
+  const router = useRouter()
   const canvasRef = useRef<fabric.Canvas | null>(null)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -46,7 +50,8 @@ export function ImageAnnotator() {
   const [rectangles, setRectangles] = useState<AnnotationRectangle[]>([])
   const [selectedRectId, setSelectedRectId] = useState<string | null>(null)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 })
-  const [imageDialogOpen, setImageDialogOpen] = useState(false)
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
   const [previewImageUrl, setPreviewImageUrl] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -65,14 +70,14 @@ export function ImageAnnotator() {
 
     // Handle selection events
     canvas.on("selection:created", (e) => {
-      const selectedObject = e.selected?.[0]
+      const selectedObject = e.selected?.[0] as CustomFabricObject
       if (selectedObject && selectedObject.data?.id) {
         setSelectedRectId(selectedObject.data.id)
       }
     })
 
     canvas.on("selection:updated", (e) => {
-      const selectedObject = e.selected?.[0]
+      const selectedObject = e.selected?.[0] as CustomFabricObject
       if (selectedObject && selectedObject.data?.id) {
         setSelectedRectId(selectedObject.data.id)
       }
@@ -84,7 +89,7 @@ export function ImageAnnotator() {
 
     // Handle object modifications
     canvas.on("object:modified", (e) => {
-      const modifiedObject = e.target
+      const modifiedObject = e.target as CustomFabricObject
       if (modifiedObject && modifiedObject.data?.id) {
         updateRectangleFromCanvas(modifiedObject)
       }
@@ -92,7 +97,7 @@ export function ImageAnnotator() {
 
     // Handle object moving
     canvas.on("object:moving", (e) => {
-      const movingObject = e.target
+      const movingObject = e.target as CustomFabricObject
       if (movingObject && movingObject.data?.id) {
         updateRectangleFromCanvas(movingObject)
       }
@@ -100,15 +105,15 @@ export function ImageAnnotator() {
 
     // Handle object scaling
     canvas.on("object:scaling", (e) => {
-      const scalingObject = e.target
+      const scalingObject = e.target as CustomFabricObject
       if (scalingObject && scalingObject.data?.id) {
         updateRectangleFromCanvas(scalingObject)
       }
     })
 
-    // Handle object rotation
+    // Handle object rotating
     canvas.on("object:rotating", (e) => {
-      const rotatingObject = e.target
+      const rotatingObject = e.target as CustomFabricObject
       if (rotatingObject && rotatingObject.data?.id) {
         updateRectangleFromCanvas(rotatingObject)
       }
@@ -121,12 +126,12 @@ export function ImageAnnotator() {
   }, [])
 
   // Update rectangle from canvas object
-  const updateRectangleFromCanvas = (fabricObject: fabric.Object) => {
+  const updateRectangleFromCanvas = (fabricObject: CustomFabricObject) => {
     if (!fabricObject.data?.id) return
 
     setRectangles((prevRectangles) => {
       return prevRectangles.map((rect) => {
-        if (rect.id === fabricObject.data?.id) {
+        if (rect.id === fabricObject.data!.id) {
           return {
             ...rect,
             left: fabricObject.left || 0,
@@ -239,9 +244,11 @@ export function ImageAnnotator() {
       angle: rect.angle,
       hasControls: true,
       hasBorders: true,
-      lockScalingFlip: false,
-      data: { id: rect.id, type: "rectangle" },
-    } as fabric.Group)
+      lockScalingX: false,
+    }) as CustomFabricObject
+
+    // Add custom data to the group
+    group.data = { id: rect.id, type: "annotation" }
 
     canvasRef.current.add(group)
     canvasRef.current.setActiveObject(group)
@@ -251,7 +258,7 @@ export function ImageAnnotator() {
     setRectangles((prevRects) =>
       prevRects.map((r) => {
         if (r.id === rect.id) {
-          return { ...r, fabricObject: group }
+          return { ...r, fabricObject: group as unknown as fabric.Group }
         }
         return r
       }),
@@ -270,14 +277,15 @@ export function ImageAnnotator() {
           // Find and update the fabric object
           const fabricObject = canvasRef.current
             ?.getObjects()
-            .find((obj) => obj.data?.id === selectedRectId) as fabric.Group
+            .find((obj) => (obj as CustomFabricObject).data?.id === selectedRectId) as CustomFabricObject
 
           if (fabricObject) {
             // Update position and size
             if (updatedRect.left !== undefined) fabricObject.set({ left: updatedRect.left })
             if (updatedRect.top !== undefined) fabricObject.set({ top: updatedRect.top })
             if (updatedRect.width !== undefined || updatedRect.height !== undefined) {
-              const rect = fabricObject.getObjects()[0] as fabric.Rect
+              const group = fabricObject as fabric.Group
+              const rect = group.getObjects()[0] as fabric.Rect
 
               if (updatedRect.width !== undefined) {
                 rect.set({ width: updatedRect.width })
@@ -287,7 +295,7 @@ export function ImageAnnotator() {
                 rect.set({ height: updatedRect.height })
               }
 
-              fabricObject.setCoords()
+              group.setCoords()
             }
 
             if (updatedRect.angle !== undefined) fabricObject.set({ angle: updatedRect.angle })
@@ -309,7 +317,9 @@ export function ImageAnnotator() {
     if (!selectedRectId || !canvasRef.current) return
 
     // Remove from canvas
-    const objectToRemove = canvasRef.current.getObjects().find((obj) => obj.data?.id === selectedRectId)
+    const objectToRemove = canvasRef.current
+      .getObjects()
+      .find((obj) => (obj as CustomFabricObject).data?.id === selectedRectId)
 
     if (objectToRemove) {
       canvasRef.current.remove(objectToRemove)
@@ -399,7 +409,8 @@ export function ImageAnnotator() {
     if (!canvasRef.current || !imageLoaded || !originalImageUrl) return
 
     if (rectangles.length === 0) {
-      alert("Please add at least one rectangle before submitting.")
+      setErrorMessage("Please add at least one rectangle before submitting.")
+      setErrorDialogOpen(true)
       return
     }
 
@@ -409,9 +420,7 @@ export function ImageAnnotator() {
       // Get the annotated image data URL
       const annotatedImageDataUrl = getCanvasImage()
       if (!annotatedImageDataUrl) {
-        alert("Error: Could not capture the annotated image.")
-        setIsSubmitting(false)
-        return
+        throw new Error("Could not capture the annotated image.")
       }
 
       // Save the image URL for preview in case of error
@@ -434,18 +443,35 @@ export function ImageAnnotator() {
       const response = await fetch("http://localhost:8000", {
         method: "POST",
         body: formData,
-        // signal: AbortSignal.timeout(3000), // 3 second timeout
+        signal: AbortSignal.timeout(10000), // 10 second timeout for production
       })
 
-      if (response.ok) {
-        alert("Images and data submitted successfully!")
-      } else {
-        throw new Error(`Server responded with status: ${response.status}`)
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status} - ${response.statusText}`)
       }
+
+      // Parse the response
+      const responseData = await response.json()
+
+      // Validate the response data
+      if (
+        !responseData.data ||
+        !responseData.data.images ||
+        !Array.isArray(responseData.data.images) ||
+        responseData.data.images.length !== 4
+      ) {
+        throw new Error("Invalid response from server. Expected an array of 4 image paths.")
+      }
+
+      // Store the image paths in sessionStorage to access them on the results page
+      sessionStorage.setItem("memeImages", JSON.stringify(responseData.data.images))
+
+      // Navigate to the results page
+      router.push(`/your-meme`)
     } catch (error) {
       console.error("Error submitting data:", error)
-      // Show the image preview dialog
-      setImageDialogOpen(true)
+      setErrorMessage(error instanceof Error ? error.message : "Failed to submit data to server.")
+      setErrorDialogOpen(true)
     } finally {
       setIsSubmitting(false)
     }
@@ -478,7 +504,10 @@ export function ImageAnnotator() {
                 className="flex items-center gap-2"
               >
                 {isSubmitting ? (
-                  "Submitting..."
+                  <>
+                    <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin mr-2"></div>
+                    Processing...
+                  </>
                 ) : (
                   <>
                     <Send size={16} />
@@ -510,51 +539,17 @@ export function ImageAnnotator() {
         <EditPanel rectangle={selectedRectangle} updateRectangle={updateRectangle} />
       </div>
 
-      {/* Image Preview Dialog */}
-      <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+      {/* Error Dialog */}
+      <Dialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Server Connection Failed</DialogTitle>
-            <DialogDescription>
-              Could not connect to localhost:8000. In a real environment, the following data would be sent to the
-              server:
-            </DialogDescription>
+            <DialogTitle>Error</DialogTitle>
+            <DialogDescription>An error occurred while processing your request.</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-medium mb-2">Annotated Image:</h3>
-              <div className="flex justify-center p-4 bg-gray-100 rounded-md">
-                {previewImageUrl && (
-                  <img
-                    src={previewImageUrl || "/placeholder.svg"}
-                    alt="Annotated image"
-                    className="max-w-full max-h-[30vh] object-contain border rounded shadow-sm"
-                  />
-                )}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-medium mb-2">Original Image:</h3>
-              <div className="flex justify-center p-4 bg-gray-100 rounded-md">
-                {originalImageUrl && (
-                  <img
-                    src={originalImageUrl || "/placeholder.svg"}
-                    alt="Original image"
-                    className="max-w-full max-h-[30vh] object-contain border rounded shadow-sm"
-                  />
-                )}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-medium mb-2">Rectangle Data:</h3>
-              <div className="bg-gray-100 p-4 rounded-md overflow-x-auto">
-                <pre className="text-sm">{JSON.stringify(prepareRectangleData(), null, 2)}</pre>
-              </div>
-            </div>
-          </div>
+          <Alert variant="destructive">
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
 
           <DialogFooter>
             <DialogClose asChild>
